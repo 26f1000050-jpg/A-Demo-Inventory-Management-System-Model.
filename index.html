@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Aurora Kettle Co. — Inventory Control Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --paper:#F6F2E9;
+  --panel:#FFFFFF;
+  --panel-2:#FBF8F2;
+  --ink:#211D1A;
+  --ink-soft:#726858;
+  --ink-faint:#9C9284;
+  --copper:#A85C32;
+  --copper-dark:#7C4023;
+  --copper-light:#E8C9AE;
+  --steel:#48585F;
+  --steel-light:#D8DFE0;
+  --green:#3F7A5A;
+  --green-bg:#E3EEE6;
+  --amber:#B9821F;
+  --amber-bg:#F6ECD5;
+  --red:#B23B33;
+  --red-bg:#F5E0DD;
+  --line:#E4DACA;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.wrap{max-width:1420px;margin:0 auto;padding:28px 32px 80px;}
+
+/* ---------- Header / Hero ---------- */
+.hero{
+  display:grid;
+  grid-template-columns:1fr 220px;
+  gap:36px;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+  padding-bottom:26px;
+  margin-bottom:26px;
+}
+.eyebrow{
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  font-size:11px;
+  font-weight:600;
+  color:var(--copper-dark);
+  margin:0 0 8px;
+}
+.hero h1{
+  font-family:'Fraunces',serif;
+  font-weight:600;
+  font-size:38px;
+  line-height:1.05;
+  margin:0 0 10px;
+  letter-spacing:-.01em;
+}
+.hero p.desc{
+  color:var(--ink-soft);
+  max-width:560px;
+  margin:0 0 18px;
+  font-size:14.5px;
+}
+.controls-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:22px;
+  align-items:flex-end;
+}
+.control-block{min-width:150px;}
+.control-block label{
+  display:block;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+  color:var(--ink-faint);
+  margin-bottom:6px;
+  font-weight:600;
+}
+.toggle-pair{display:flex;border:1px solid var(--steel);border-radius:7px;overflow:hidden;width:max-content;}
+.toggle-pair button{
+  border:none;background:var(--panel);color:var(--steel);
+  padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+.toggle-pair button.active{background:var(--steel);color:#fff;}
+.slider-row{display:flex;align-items:center;gap:10px;}
+input[type=range]{accent-color:var(--copper);width:130px;}
+.slider-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--copper-dark);min-width:40px;}
+.num-inline{
+  width:64px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--panel-2);
+}
+
+/* Gauge */
+.gauge-box{display:flex;flex-direction:column;align-items:center;}
+.gauge{position:relative;width:170px;height:170px;}
+.gauge-dial{
+  width:170px;height:170px;border-radius:50%;
+  background:conic-gradient(from 225deg, var(--red) 0deg 121.5deg, var(--amber) 121.5deg 148.5deg, var(--green) 148.5deg 270deg, transparent 270deg 360deg);
+}
+.gauge-hole{
+  position:absolute;top:20px;left:20px;width:130px;height:130px;border-radius:50%;
+  background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 0 1px var(--line);
+}
+.gauge-needle{
+  position:absolute;left:50%;top:50%;width:3px;height:62px;
+  background:linear-gradient(var(--copper-dark),var(--copper));
+  transform-origin:50% 100%;
+  border-radius:2px 2px 0 0;
+  margin-left:-1.5px;margin-top:-62px;
+  transition:transform .5s cubic-bezier(.4,1.4,.4,1);
+}
+.gauge-pin{position:absolute;left:50%;top:50%;width:12px;height:12px;margin-left:-6px;margin-top:-6px;border-radius:50%;background:var(--copper-dark);border:2px solid var(--panel);}
+.gauge-value{font-family:'Fraunces',serif;font-size:26px;font-weight:600;line-height:1;}
+.gauge-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-top:3px;font-weight:600;}
+
+/* ---------- Summary strip ---------- */
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+.stat-card .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-weight:600;margin-bottom:6px;}
+.stat-card .val{font-family:'Fraunces',serif;font-size:26px;font-weight:600;}
+.stat-card .sub{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+.stat-card.warn .val{color:var(--red);}
+
+/* ---------- Filter bar ---------- */
+.filter-bar{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
+  margin-bottom:14px;
+}
+.search-input{
+  padding:9px 12px;border:1px solid var(--line);border-radius:7px;width:260px;
+  font-family:'Inter',sans-serif;font-size:13px;background:var(--panel);
+}
+.chip-row{display:flex;gap:6px;}
+.chip{
+  border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:6px 13px;
+  font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+}
+.chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.chip.a-chip.active{background:var(--copper);border-color:var(--copper);}
+.chip.b-chip.active{background:var(--steel);border-color:var(--steel);}
+.chip.c-chip.active{background:var(--ink-faint);border-color:var(--ink-faint);}
+.btn{
+  background:var(--copper);color:#fff;border:none;border-radius:7px;padding:9px 15px;
+  font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
+}
+.btn.secondary{background:transparent;color:var(--steel);border:1px solid var(--steel-light);}
+.btn.tiny{padding:5px 9px;font-size:11px;}
+
+/* ---------- Layout ---------- */
+.main-grid{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.panel-head{
+  padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
+}
+.panel-head h2{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin:0;}
+.panel-head .count-pill{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--ink-soft);font-weight:600;
+}
+
+/* Table */
+.table-scroll{overflow-x:auto;}
+table{border-collapse:collapse;width:100%;min-width:1360px;}
+thead th{
+  position:sticky;top:0;background:var(--panel-2);
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);
+  font-weight:600;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;}
+tbody tr:hover{background:var(--panel-2);}
+tbody tr.selected-row{background:var(--copper-light);}
+.name-cell{font-weight:600;font-family:'Inter';cursor:pointer;min-width:180px;white-space:normal;}
+.name-cell .sku{display:block;font-size:10.5px;color:var(--ink-faint);font-weight:400;margin-top:1px;}
+td input{
+  width:72px;padding:5px 6px;border:1px solid var(--line);border-radius:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--panel-2);color:var(--ink);
+}
+td input:focus{outline:2px solid var(--copper-light);border-color:var(--copper);}
+.computed{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+.abc-badge{
+  display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;
+  font-weight:700;font-size:12px;font-family:'Fraunces',serif;
+}
+.abc-A{background:var(--copper-light);color:var(--copper-dark);}
+.abc-B{background:var(--steel-light);color:var(--steel);}
+.abc-C{background:var(--panel-2);color:var(--ink-faint);border:1px solid var(--line);}
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:700;
+}
+.status-pill .dot{width:7px;height:7px;border-radius:50%;}
+.status-red{background:var(--red-bg);color:var(--red);}
+.status-red .dot{background:var(--red);}
+.status-yellow{background:var(--amber-bg);color:var(--amber);}
+.status-yellow .dot{background:var(--amber);}
+.status-green{background:var(--green-bg);color:var(--green);}
+.status-green .dot{background:var(--green);}
+.del-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:15px;padding:2px 5px;}
+.del-btn:hover{color:var(--red);}
+.savings-pos{color:var(--green);}
+.savings-neg{color:var(--red);}
+
+/* Alerts */
+.alert-list{max-height:640px;overflow-y:auto;}
+.alert-item{
+  padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;
+}
+.alert-item:hover{background:var(--panel-2);}
+.alert-item .aname{font-weight:600;font-size:13px;margin-bottom:3px;}
+.alert-item .arow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);}
+.alert-item .badge-days{
+  font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;
+}
+.empty-alert{padding:26px 18px;text-align:center;color:var(--ink-faint);font-size:12.5px;}
+
+/* Detail panel */
+.detail{margin-top:20px;}
+.detail-grid{display:grid;grid-template-columns:220px 1fr 300px;gap:0;}
+.detail-col{padding:20px;border-right:1px solid var(--line);}
+.detail-col:last-child{border-right:none;}
+.detail-metric{margin-bottom:14px;}
+.detail-metric .m-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:600;}
+.detail-metric .m-val{font-family:'Fraunces',serif;font-size:19px;font-weight:600;}
+.detail-metric .m-sub{font-size:11px;color:var(--ink-soft);}
+.chart-wrap{padding:18px;}
+canvas{max-width:100%;}
+.legend-row{display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;}
+.legend-chip{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-soft);}
+.legend-swatch{width:11px;height:11px;border-radius:3px;}
+
+footer.note{margin-top:30px;font-size:11.5px;color:var(--ink-faint);border-top:1px solid var(--line);padding-top:16px;}
+
+@media (max-width:980px){
+  .hero{grid-template-columns:1fr;}
+  .gauge-box{justify-self:start;}
+  .main-grid{grid-template-columns:1fr;}
+  .stat-strip{grid-template-columns:repeat(2,1fr);}
+  .detail-grid{grid-template-columns:1fr;}
+  .detail-col{border-right:none;border-bottom:1px solid var(--line);}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Aurora Kettle Co. · Supply &amp; Demand Planning</p>
+      <h1>Inventory Control Console</h1>
+      <p class="desc">Live EOQ, reorder point, safety stock and ABC analysis across the kettle line. Edit any figure in the table below — every calculation, gauge and chart updates in step.</p>
+      <div class="controls-row">
+        <div class="control-block">
+          <label>Reorder Policy</label>
+          <div class="toggle-pair">
+            <button id="btn-continuous" class="active" onclick="setPolicy('continuous')">Continuous Review</button>
+            <button id="btn-periodic" onclick="setPolicy('periodic')">Periodic Review</button>
+          </div>
+        </div>
+        <div class="control-block">
+          <label>Target Service Level</label>
+          <div class="slider-row">
+            <input type="range" id="serviceLevel" min="50" max="99.5" step="0.5" value="95" oninput="onServiceLevelChange(this.value)">
+            <span class="slider-val" id="serviceLevelVal">95%</span>
+          </div>
+        </div>
+        <div class="control-block">
+          <label>Demand Variability</label>
+          <div class="slider-row">
+            <input type="range" id="demandVar" min="5" max="50" step="1" value="20" oninput="onDemandVarChange(this.value)">
+            <span class="slider-val" id="demandVarVal">20%</span>
+          </div>
+        </div>
+        <div class="control-block" id="reviewPeriodBlock" style="display:none;">
+          <label>Review Period (days)</label>
+          <input type="number" class="num-inline" id="reviewPeriod" value="30" min="1" oninput="onReviewPeriodChange(this.value)">
+        </div>
+      </div>
+    </div>
+    <div class="gauge-box">
+      <div class="gauge">
+        <div class="gauge-dial"></div>
+        <div class="gauge-hole">
+          <div class="gauge-value" id="fleetHealthVal">--%</div>
+          <div class="gauge-label">Fleet Health</div>
+        </div>
+        <div class="gauge-needle" id="fleetNeedle"></div>
+        <div class="gauge-pin"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="stat-strip">
+    <div class="stat-card">
+      <div class="lbl">Active SKUs</div>
+      <div class="val" id="statSkuCount">0</div>
+      <div class="sub" id="statSkuSub">across all categories</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="lbl">Due For Reorder</div>
+      <div class="val" id="statReorderCount">0</div>
+      <div class="sub">at or below reorder point</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">Inventory On Hand</div>
+      <div class="val" id="statInvValue">$0</div>
+      <div class="sub">valued at unit cost</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">Potential Annual Savings</div>
+      <div class="val" id="statSavings">$0</div>
+      <div class="sub">moving current orders to EOQ</div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <input type="text" class="search-input" placeholder="Search kettle items…" oninput="onSearch(this.value)">
+      <div class="chip-row">
+        <div class="chip active" data-cat="ALL" onclick="setCatFilter('ALL')">All</div>
+        <div class="chip a-chip" data-cat="A" onclick="setCatFilter('A')">A</div>
+        <div class="chip b-chip" data-cat="B" onclick="setCatFilter('B')">B</div>
+        <div class="chip c-chip" data-cat="C" onclick="setCatFilter('C')">C</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn secondary" onclick="resetData()">Reset sample data</button>
+      <button class="btn" onclick="addItem()">+ Add item</button>
+    </div>
+  </div>
+
+  <!-- MAIN GRID: table + alerts -->
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Inventory Register</h2>
+        <span class="count-pill" id="tableCountPill">0 items</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Annual Demand</th>
+              <th>Order Cost</th>
+              <th>Carry Cost/yr</th>
+              <th>Unit Cost</th>
+              <th>Current Stock</th>
+              <th>Lead Time (d)</th>
+              <th>Order Qty</th>
+              <th>EOQ</th>
+              <th id="ropHeader">Reorder Pt</th>
+              <th>Safety Stock</th>
+              <th>ABC</th>
+              <th>Status</th>
+              <th>Cost Δ (Cur − EOQ)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Reorder Alerts</h2>
+        <span class="count-pill" id="alertCountPill">0</span>
+      </div>
+      <div class="alert-list" id="alertList"></div>
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="panel detail" id="detailPanel" style="display:none;">
+    <div class="panel-head">
+      <h2 id="detailTitle">Item detail</h2>
+      <button class="btn tiny secondary" onclick="closeDetail()">Close</button>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-col">
+        <div class="gauge" style="width:150px;height:150px;">
+          <div class="gauge-dial" style="width:150px;height:150px;"></div>
+          <div class="gauge-hole" style="top:18px;left:18px;width:114px;height:114px;">
+            <div class="gauge-value" id="itemGaugeVal" style="font-size:20px;">--</div>
+            <div class="gauge-label">On hand</div>
+          </div>
+          <div class="gauge-needle" id="itemNeedle" style="height:52px;margin-top:-52px;"></div>
+          <div class="gauge-pin"></div>
+        </div>
+      </div>
+      <div class="detail-col" id="detailMetrics" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;"></div>
+      <div class="detail-col">
+        <div class="detail-metric">
+          <div class="m-lbl">ABC Classification</div>
+          <div class="m-val" id="detailAbc">—</div>
+          <div class="m-sub" id="detailAbcSub"></div>
+        </div>
+        <div class="detail-metric">
+          <div class="m-lbl">Annual Consumption Value</div>
+          <div class="m-val" id="detailValue">—</div>
+        </div>
+        <div class="detail-metric">
+          <div class="m-lbl">Days Of Stock Remaining</div>
+          <div class="m-val" id="detailDays">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="eoqChart" height="90"></canvas>
+      <div class="legend-row">
+        <div class="legend-chip"><span class="legend-swatch" style="background:#A85C32;"></span> Ordering cost</div>
+        <div class="legend-chip"><span class="legend-swatch" style="background:#48585F;"></span> Carrying cost</div>
+        <div class="legend-chip"><span class="legend-swatch" style="background:#211D1A;"></span> Total cost</div>
+        <div class="legend-chip"><span class="legend-swatch" style="background:#B23B33;border-radius:50%;"></span> EOQ minimum</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">
+    Formulas: EOQ = √(2DS⁄H) · Reorder Point = daily demand × lead time + safety stock · Safety stock = z × σ_demand × √(lead time) (continuous) or z × σ_demand × √(lead time + review period) (periodic) · z derived from target service level via the inverse normal distribution · ABC bands: A ≤ 80% cumulative value, B ≤ 95%, C to 100%. Figures are illustrative planning estimates, not accounting records.
+  </footer>
+
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   STATE
+--------------------------------------------------------------- */
+let policy = 'continuous';
+let serviceLevel = 95;
+let demandVar = 20; // percent
+let reviewPeriod = 30; // days, periodic only
+let searchText = '';
+let catFilter = 'ALL';
+let selectedId = null;
+let eoqChartInstance = null;
+let nextId = 1;
+
+function sampleData(){
+  nextId = 1;
+  return [
+    {id:nextId++, name:'Copper Classic Stovetop Kettle', sku:'AKC-1000', demand:4200, orderingCost:85, carryingCost:4.20, unitCost:28, currentStock:380, leadTime:14, orderQty:500},
+    {id:nextId++, name:'Brushed Steel Whistling Kettle', sku:'AKC-1010', demand:6800, orderingCost:70, carryingCost:3.10, unitCost:19, currentStock:420, leadTime:10, orderQty:600},
+    {id:nextId++, name:'Electric Glass Rapid Kettle', sku:'AKC-2005', demand:9500, orderingCost:120, carryingCost:6.80, unitCost:42, currentStock:610, leadTime:21, orderQty:800},
+    {id:nextId++, name:'Enamel Stovetop Kettle', sku:'AKC-1030', demand:2100, orderingCost:65, carryingCost:3.90, unitCost:24, currentStock:140, leadTime:18, orderQty:300},
+    {id:nextId++, name:'Travel Kettle Mini', sku:'AKC-1500', demand:5400, orderingCost:55, carryingCost:2.20, unitCost:14, currentStock:260, leadTime:12, orderQty:450},
+    {id:nextId++, name:'Cordless Rapid-Boil Kettle', sku:'AKC-2050', demand:11200, orderingCost:140, carryingCost:8.50, unitCost:55, currentStock:900, leadTime:25, orderQty:1000},
+    {id:nextId++, name:'Cast Iron Tetsubin Kettle', sku:'AKC-3001', demand:900, orderingCost:95, carryingCost:5.60, unitCost:68, currentStock:45, leadTime:30, orderQty:150},
+    {id:nextId++, name:'Gooseneck Pour-Over Kettle', sku:'AKC-2200', demand:3300, orderingCost:60, carryingCost:3.40, unitCost:32, currentStock:190, leadTime:15, orderQty:350},
+  ];
+}
+let items = sampleData();
+
+/* ---------------------------------------------------------------
+   MATH HELPERS
+--------------------------------------------------------------- */
+// Acklam's rational approximation of the inverse standard normal CDF
+function invNorm(p){
+  if(p<=0) p=0.0001; if(p>=1) p=0.9999;
+  const a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+  const b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+  const d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+  const plow=0.02425, phigh=1-plow;
+  let q,r;
+  if(p<plow){ q=Math.sqrt(-2*Math.log(p)); return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+  else if(p<=phigh){ q=p-0.5; r=q*q; return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1); }
+  else{ q=Math.sqrt(-2*Math.log(1-p)); return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+}
+
+function fmtCurrency(n){ return '$'+Math.round(n).toLocaleString(); }
+function fmtCurrency2(n){ return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtNum(n,d=0){ return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
+
+function computeItem(it){
+  const D=it.demand, S=it.orderingCost, H=Math.max(it.carryingCost,0.0001), C=it.unitCost, L=it.leadTime;
+  const EOQ = Math.sqrt((2*D*S)/H);
+  const dailyDemand = D/365;
+  const sigmaD = (demandVar/100)*dailyDemand;
+  const z = invNorm(serviceLevel/100);
+  let SS, ROP, orderUpTo=null;
+  if(policy==='continuous'){
+    const sigmaLT = sigmaD*Math.sqrt(Math.max(L,0.0001));
+    SS = z*sigmaLT;
+    ROP = dailyDemand*L + SS;
+  } else {
+    const T = reviewPeriod;
+    const sigmaRT = sigmaD*Math.sqrt(Math.max(L+T,0.0001));
+    SS = z*sigmaRT;
+    orderUpTo = dailyDemand*(L+T) + SS;
+    ROP = orderUpTo;
+  }
+  const costEOQ = (D/EOQ)*S + (EOQ/2)*H;
+  const Qcur = Math.max(it.orderQty,0.0001);
+  const costCur = (D/Qcur)*S + (Qcur/2)*H;
+  const savings = costCur - costEOQ;
+  const annualValue = D*C;
+
+  let status;
+  if(policy==='continuous'){
+    status = it.currentStock<=ROP ? 'red' : (it.currentStock<=ROP*1.25 ? 'yellow' : 'green');
+  } else {
+    status = it.currentStock<=SS ? 'red' : (it.currentStock<=SS*1.5 ? 'yellow' : 'green');
+  }
+  const daysOfStock = dailyDemand>0 ? it.currentStock/dailyDemand : 0;
+
+  return {EOQ,dailyDemand,SS,ROP,orderUpTo,costEOQ,costCur,savings,annualValue,status,daysOfStock,z};
+}
+
+function computeAll(){
+  const withMetrics = items.map(it=>({it, m:computeItem(it)}));
+  // ABC classification by annual consumption value
+  const totalValue = withMetrics.reduce((s,x)=>s+x.m.annualValue,0) || 1;
+  const sorted = [...withMetrics].sort((a,b)=>b.m.annualValue-a.m.annualValue);
+  let cum=0;
+  const abcMap = {};
+  sorted.forEach(x=>{
+    cum += x.m.annualValue;
+    const cumPct = (cum/totalValue)*100;
+    let cat = cumPct<=80 ? 'A' : (cumPct<=95 ? 'B' : 'C');
+    abcMap[x.it.id] = {cat, pct:(x.m.annualValue/totalValue)*100, cumPct};
+  });
+  return withMetrics.map(x=>({...x, abc:abcMap[x.it.id]}));
+}
+
+/* ---------------------------------------------------------------
+   RENDER
+--------------------------------------------------------------- */
+function setPolicy(p){
+  policy = p;
+  document.getElementById('btn-continuous').classList.toggle('active', p==='continuous');
+  document.getElementById('btn-periodic').classList.toggle('active', p==='periodic');
+  document.getElementById('reviewPeriodBlock').style.display = p==='periodic' ? 'block' : 'none';
+  document.getElementById('ropHeader').textContent = p==='periodic' ? 'Order-Up-To' : 'Reorder Pt';
+  renderAll();
+}
+function onServiceLevelChange(v){ serviceLevel=parseFloat(v); document.getElementById('serviceLevelVal').textContent=v+'%'; renderAll(); }
+function onDemandVarChange(v){ demandVar=parseFloat(v); document.getElementById('demandVarVal').textContent=v+'%'; renderAll(); }
+function onReviewPeriodChange(v){ reviewPeriod=Math.max(parseFloat(v)||1,1); renderAll(); }
+function onSearch(v){ searchText=v.toLowerCase(); renderTable(computeAll()); }
+function setCatFilter(cat){
+  catFilter=cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active', c.dataset.cat===cat));
+  renderTable(computeAll());
+}
+
+function updateField(id, field, value){
+  const it = items.find(i=>i.id===id);
+  if(!it) return;
+  it[field] = field==='name' ? value : (parseFloat(value)||0);
+  renderAll();
+}
+function deleteItem(id){
+  items = items.filter(i=>i.id!==id);
+  if(selectedId===id) selectedId=null;
+  renderAll();
+}
+function addItem(){
+  const id = nextId++;
+  items.push({id, name:'New Kettle Item', sku:'AKC-NEW', demand:1000, orderingCost:60, carryingCost:3.0, unitCost:20, currentStock:100, leadTime:14, orderQty:200});
+  renderAll();
+  selectedId = id;
+  renderDetail(computeAll());
+  document.getElementById('detailPanel').scrollIntoView({behavior:'smooth'});
+}
+function resetData(){ items = sampleData(); selectedId=null; renderAll(); }
+
+function statusLabel(s){ return s==='red' ? 'Reorder now' : (s==='yellow' ? 'Watch' : 'Healthy'); }
+
+function renderAll(){
+  const data = computeAll();
+  renderStats(data);
+  renderFleetGauge(data);
+  renderTable(data);
+  renderAlerts(data);
+  if(selectedId!==null && items.find(i=>i.id===selectedId)) renderDetail(data);
+  else { selectedId=null; document.getElementById('detailPanel').style.display='none'; }
+}
+
+function renderStats(data){
+  document.getElementById('statSkuCount').textContent = data.length;
+  const abcCounts = {A:0,B:0,C:0};
+  data.forEach(x=>abcCounts[x.abc.cat]++);
+  document.getElementById('statSkuSub').textContent = `${abcCounts.A} A · ${abcCounts.B} B · ${abcCounts.C} C`;
+  const reorderCount = data.filter(x=>x.m.status==='red').length;
+  document.getElementById('statReorderCount').textContent = reorderCount;
+  const invValue = data.reduce((s,x)=>s+x.it.currentStock*x.it.unitCost,0);
+  document.getElementById('statInvValue').textContent = fmtCurrency(invValue);
+  const savings = data.reduce((s,x)=>s+Math.max(x.m.savings,0),0);
+  document.getElementById('statSavings').textContent = fmtCurrency(savings);
+}
+
+function renderFleetGauge(data){
+  const total = data.length || 1;
+  const healthy = data.filter(x=>x.m.status==='green').length;
+  const pct = Math.round((healthy/total)*100);
+  document.getElementById('fleetHealthVal').textContent = pct+'%';
+  const angle = 225 + (pct/100)*270;
+  document.getElementById('fleetNeedle').style.transform = `rotate(${angle}deg)`;
+}
+
+function passesFilter(x){
+  const nameMatch = x.it.name.toLowerCase().includes(searchText) || x.it.sku.toLowerCase().includes(searchText);
+  const catMatch = catFilter==='ALL' || x.abc.cat===catFilter;
+  return nameMatch && catMatch;
+}
+
+function renderTable(data){
+  const tbody = document.getElementById('tableBody');
+  const filtered = data.filter(passesFilter);
+  document.getElementById('tableCountPill').textContent = `${filtered.length} of ${data.length} items`;
+  tbody.innerHTML = filtered.map(x=>{
+    const it=x.it, m=x.m, abc=x.abc;
+    const deltaClass = m.savings>=0 ? 'savings-pos' : 'savings-neg';
+    const deltaSign = m.savings>=0 ? '−' : '+';
+    return `
+    <tr class="${selectedId===it.id?'selected-row':''}">
+      <td class="name-cell" onclick="openDetail(${it.id})">${it.name}<span class="sku">${it.sku}</span></td>
+      <td><input type="number" value="${it.demand}" onchange="updateField(${it.id},'demand',this.value)"></td>
+      <td><input type="number" value="${it.orderingCost}" onchange="updateField(${it.id},'orderingCost',this.value)"></td>
+      <td><input type="number" step="0.1" value="${it.carryingCost}" onchange="updateField(${it.id},'carryingCost',this.value)"></td>
+      <td><input type="number" step="0.1" value="${it.unitCost}" onchange="updateField(${it.id},'unitCost',this.value)"></td>
+      <td><input type="number" value="${it.currentStock}" onchange="updateField(${it.id},'currentStock',this.value)"></td>
+      <td><input type="number" value="${it.leadTime}" onchange="updateField(${it.id},'leadTime',this.value)"></td>
+      <td><input type="number" value="${it.orderQty}" onchange="updateField(${it.id},'orderQty',this.value)"></td>
+      <td class="computed">${fmtNum(m.EOQ)}</td>
+      <td class="computed">${fmtNum(m.ROP)}</td>
+      <td class="computed">${fmtNum(m.SS)}</td>
+      <td><span class="abc-badge abc-${abc.cat}">${abc.cat}</span></td>
+      <td><span class="status-pill status-${m.status}"><span class="dot"></span>${statusLabel(m.status)}</span></td>
+      <td class="computed ${deltaClass}">${deltaSign}${fmtCurrency(Math.abs(m.savings))}</td>
+      <td><button class="del-btn" onclick="deleteItem(${it.id})" title="Remove item">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlerts(data){
+  const redItems = data.filter(x=>x.m.status==='red').sort((a,b)=>a.m.daysOfStock-b.m.daysOfStock);
+  document.getElementById('alertCountPill').textContent = redItems.length;
+  const list = document.getElementById('alertList');
+  if(redItems.length===0){
+    list.innerHTML = `<div class="empty-alert">No items below their reorder point. Fleet is holding steady.</div>`;
+    return;
+  }
+  list.innerHTML = redItems.map(x=>{
+    const it=x.it, m=x.m;
+    return `
+    <div class="alert-item" onclick="openDetail(${it.id})">
+      <div class="aname">${it.name}</div>
+      <div class="arow">
+        <span>${fmtNum(it.currentStock)} on hand vs ${policy==='periodic'?'order-up-to':'ROP'} ${fmtNum(m.ROP)}</span>
+        <span class="badge-days" style="color:${m.daysOfStock<7?'#B23B33':'#B9821F'};">${fmtNum(m.daysOfStock,1)}d left</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openDetail(id){
+  selectedId = id;
+  renderAll();
+  document.getElementById('detailPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function closeDetail(){
+  selectedId = null;
+  document.getElementById('detailPanel').style.display='none';
+  renderTable(computeAll());
+}
+
+function renderDetail(data){
+  const x = data.find(d=>d.it.id===selectedId);
+  if(!x) return;
+  const it=x.it, m=x.m, abc=x.abc;
+  const panel = document.getElementById('detailPanel');
+  panel.style.display='block';
+  document.getElementById('detailTitle').textContent = `${it.name} — ${it.sku}`;
+
+  // gauge
+  const ref = m.ROP>0 ? m.ROP*2.5 : (it.currentStock||1);
+  const pct = Math.max(0, Math.min(100, (it.currentStock/ref)*100));
+  document.getElementById('itemGaugeVal').textContent = fmtNum(it.currentStock);
+  document.getElementById('itemNeedle').style.transform = `rotate(${225+(pct/100)*270}deg)`;
+
+  // metrics grid
+  document.getElementById('detailMetrics').innerHTML = `
+    <div class="detail-metric"><div class="m-lbl">EOQ</div><div class="m-val">${fmtNum(m.EOQ)}</div><div class="m-sub">units per order</div></div>
+    <div class="detail-metric"><div class="m-lbl">${policy==='periodic'?'Order-Up-To Level':'Reorder Point'}</div><div class="m-val">${fmtNum(m.ROP)}</div><div class="m-sub">${policy==='periodic'?`reviewed every ${reviewPeriod}d`:`lead time ${it.leadTime}d`}</div></div>
+    <div class="detail-metric"><div class="m-lbl">Safety Stock</div><div class="m-val">${fmtNum(m.SS)}</div><div class="m-sub">z = ${m.z.toFixed(2)} @ ${serviceLevel}%</div></div>
+    <div class="detail-metric"><div class="m-lbl">Daily Demand</div><div class="m-val">${fmtNum(m.dailyDemand,1)}</div><div class="m-sub">units / day</div></div>
+    <div class="detail-metric"><div class="m-lbl">Cost at EOQ</div><div class="m-val">${fmtCurrency(m.costEOQ)}</div><div class="m-sub">ordering + carrying / yr</div></div>
+    <div class="detail-metric"><div class="m-lbl">Cost at Current Qty</div><div class="m-val">${fmtCurrency(m.costCur)}</div><div class="m-sub">ordering ${fmtNum(it.orderQty)} / order</div></div>
+  `;
+
+  document.getElementById('detailAbc').textContent = `Class ${abc.cat}`;
+  document.getElementById('detailAbcSub').textContent = `${abc.pct.toFixed(1)}% of total value · cumulative ${abc.cumPct.toFixed(1)}%`;
+  document.getElementById('detailValue').textContent = fmtCurrency(m.annualValue);
+  document.getElementById('detailDays').textContent = `${fmtNum(m.daysOfStock,1)} days`;
+
+  renderChart(it, m);
+  renderTable(data); // refresh row highlight
+}
+
+function renderChart(it, m){
+  const D=it.demand, S=it.orderingCost, H=Math.max(it.carryingCost,0.0001);
+  const minQ = Math.max(m.EOQ*0.2, 5);
+  const maxQ = m.EOQ*2.2;
+  const steps = 40;
+  const ordering=[], carrying=[], total=[];
+  for(let i=0;i<=steps;i++){
+    const Q = minQ + (maxQ-minQ)*(i/steps);
+    const oc = (D/Q)*S;
+    const cc = (Q/2)*H;
+    ordering.push({x:Q,y:oc});
+    carrying.push({x:Q,y:cc});
+    total.push({x:Q,y:oc+cc});
+  }
+  const ctx = document.getElementById('eoqChart').getContext('2d');
+  if(eoqChartInstance) eoqChartInstance.destroy();
+  eoqChartInstance = new Chart(ctx, {
+    type:'line',
+    data:{
+      datasets:[
+        {label:'Ordering cost', data:ordering, borderColor:'#A85C32', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15},
+        {label:'Carrying cost', data:carrying, borderColor:'#48585F', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15},
+        {label:'Total cost', data:total, borderColor:'#211D1A', backgroundColor:'transparent', borderWidth:2.5, pointRadius:0, tension:0.15},
+        {label:'EOQ minimum', data:[{x:m.EOQ,y:m.costEOQ}], type:'scatter', showLine:false, pointRadius:7, pointHoverRadius:8, backgroundColor:'#B23B33', borderColor:'#fff', borderWidth:2},
+      ]
+    },
+    options:{
+      responsive:true,
+      interaction:{mode:'nearest',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: $${Math.round(ctx.parsed.y).toLocaleString()} at Q=${Math.round(ctx.parsed.x).toLocaleString()}`}}
+      },
+      scales:{
+        x:{type:'linear', title:{display:true,text:'Order Quantity (units)',font:{family:'Inter',size:11}}, grid:{color:'#EFE9DC'}},
+        y:{title:{display:true,text:'Annual Cost ($)',font:{family:'Inter',size:11}}, grid:{color:'#EFE9DC'}}
+      }
+    }
+  });
+}
+
+/* ---------------------------------------------------------------
+   INIT
+--------------------------------------------------------------- */
+renderAll();
+</script>
+</body>
+</html>
